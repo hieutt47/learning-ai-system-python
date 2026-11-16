@@ -5,12 +5,14 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.api_errors import ApiError
 from app.core.catalog_course_dependencies import SessionDependency, SqlUnitOfWork, WireId, invoke
 from app.modules.course.domain import CourseService
 from app.modules.course.infrastructure import SqlCourseCategoryLookup, SqlCourseRepository
+from app.modules.course.storage import MAX_THUMBNAIL_BYTES, LocalThumbnailStorage, detect_image_type
 from app.modules.identity.api.dependencies import current_actor
 from app.modules.identity.domain.models import Actor
 
@@ -73,10 +75,18 @@ class CoursePage(BaseModel):
 
 def course_response(course) -> CourseResponse:
     values = asdict(course)
+    values.pop("thumbnail_storage_key", None)
     for field in ("id", "category_id", "teacher_id"):
         values[field] = str(values[field])
     values["price"] = format(course.price, ".2f")
     return CourseResponse(**values)
+
+
+def get_thumbnail_storage() -> LocalThumbnailStorage:
+    return LocalThumbnailStorage()
+
+
+ThumbnailStorage = Annotated[LocalThumbnailStorage, Depends(get_thumbnail_storage)]
 
 
 def changes(body) -> dict:
@@ -125,3 +135,46 @@ def patch_course(course_id: WireId, body: CoursePatch, actor: CurrentActor, serv
 def delete_course(course_id: WireId, actor: CurrentActor, service: Service):
     invoke(service.delete, actor, int(course_id))
     return Response(status_code=204)
+
+
+@router.post("/courses/{course_id}/thumbnail", response_model=CourseResponse)
+async def upload_thumbnail(
+    course_id: WireId,
+    actor: CurrentActor,
+    service: Service,
+    storage: ThumbnailStorage,
+    file: Annotated[UploadFile, File()],
+):
+    content = await file.read(MAX_THUMBNAIL_BYTES + 1)
+    if not content:
+        raise ApiError(400, "VALIDATION_ERROR", "Thumbnail file is required.")
+    if len(content) > MAX_THUMBNAIL_BYTES:
+        raise ApiError(413, "FILE_TOO_LARGE", "Thumbnail must be at most 5 MiB.")
+    detected = detect_image_type(content)
+    if detected is None:
+        raise ApiError(415, "UNSUPPORTED_FILE_TYPE", "Thumbnail must be a JPEG, PNG or WebP image.")
+    ext, _ = detected
+    storage_key, thumbnail_url = storage.store(content, ext)
+    try:
+        updated, old_key = invoke(
+            service.update_thumbnail, actor, int(course_id), storage_key, thumbnail_url
+        )
+    except Exception:
+        storage.delete_quietly(storage_key)
+        raise
+    if old_key and old_key != storage_key:
+        storage.delete_quietly(old_key)
+    return course_response(updated)
+
+
+@router.get("/files/{storage_key}")
+def get_file(storage_key: str, storage: ThumbnailStorage):
+    data, media_type = invoke(storage.read, storage_key)
+    return Response(
+        content=data,
+        media_type=media_type,
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "public, max-age=2592000",
+        },
+    )

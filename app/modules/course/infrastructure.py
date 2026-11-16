@@ -10,7 +10,8 @@ from app.modules.course.domain import Course
 
 COURSE_SELECT = """
 SELECT c.id, c.title, c.description, c.category_id, c.teacher_id, c.price,
-       c.is_published, c.archived_at, c.thumbnail_url, c.created_at, c.updated_at,
+       c.is_published, c.archived_at, c.thumbnail_url, c.thumbnail_storage_key,
+       c.created_at, c.updated_at,
        cat.name AS category_name, u.full_name AS teacher_name,
        (SELECT COUNT(*) FROM lessons l WHERE l.course_id = c.id) AS lesson_count,
        (SELECT COUNT(*) FROM course_members m WHERE m.course_id = c.id) AS total_students
@@ -106,6 +107,16 @@ class SqlCourseRepository:
                 ),
                 {**params, "id": course_id},
             )
+        return self.get(course_id)
+
+    def save_thumbnail(self, course_id: int, storage_key: str, thumbnail_url: str) -> Course:
+        self.session.execute(
+            text(
+                "UPDATE courses SET thumbnail_storage_key = :key, thumbnail_url = :url "
+                "WHERE id = :id"
+            ),
+            {"key": storage_key, "url": thumbnail_url, "id": course_id},
+        )
         return self.get(course_id)
 
     def dependencies(self, course_id: int) -> tuple[str, ...]:

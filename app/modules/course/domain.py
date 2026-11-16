@@ -39,6 +39,7 @@ class Course:
     teacher_name: str | None = None
     lesson_count: int | None = None
     total_students: int | None = None
+    thumbnail_storage_key: str | None = None
 
 
 class CourseCategoryPort(Protocol):
@@ -61,6 +62,7 @@ class CourseRepository(Protocol):
     ) -> tuple[list[Course], int]: ...
     def get(self, course_id: int, *, for_update: bool = False) -> Course | None: ...
     def save(self, course: Course) -> Course: ...
+    def save_thumbnail(self, course_id: int, storage_key: str, thumbnail_url: str) -> Course: ...
     def dependencies(self, course_id: int) -> tuple[str, ...]: ...
     def delete(self, course_id: int) -> None: ...
 
@@ -184,3 +186,14 @@ class CourseService:
                 uow.commit()
         except ResourceInUse as exc:
             raise DomainError("INVALID_STATE", 409, "Course has dependent resources.") from exc
+
+    def update_thumbnail(
+        self, actor: Actor, course_id: int, storage_key: str, thumbnail_url: str
+    ) -> tuple[Course, str | None]:
+        self._manager(actor)
+        with self.transaction() as uow:
+            course = self._get(actor, course_id, for_update=True)
+            old_key = course.thumbnail_storage_key
+            updated = self.repository.save_thumbnail(course_id, storage_key, thumbnail_url)
+            uow.commit()
+            return updated, old_key

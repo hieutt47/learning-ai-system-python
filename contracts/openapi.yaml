@@ -71,6 +71,14 @@
     "/api/v1/courses/{course_id}/members": {
       "parameters": [{"$ref": "#/components/parameters/CourseId"}],
       "get": {"operationId": "listCourseMembers", "security": [{"bearerAuth": []}], "description": "Course-owning TEACHER or ADMIN only. Ordered by enrolled_at DESC, id DESC.", "parameters": [{"$ref": "#/components/parameters/Page"}, {"$ref": "#/components/parameters/PageSize"}], "responses": {"200": {"description": "Course member page", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/MemberPage"}}}}, "400": {"$ref": "#/components/responses/Error"}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Error"}, "404": {"$ref": "#/components/responses/Error"}, "503": {"$ref": "#/components/responses/Error"}}}
+    },
+    "/api/v1/courses/{course_id}/thumbnail": {
+      "parameters": [{"$ref": "#/components/parameters/CourseId"}],
+      "post": {"operationId": "uploadCourseThumbnail", "security": [{"bearerAuth": []}], "description": "Course-owning TEACHER or ADMIN only. Validates JPEG/PNG/WebP magic bytes and 5 MiB limit; cleans up new file on DB failure and removes old file after commit.", "requestBody": {"required": true, "content": {"multipart/form-data": {"schema": {"type": "object", "required": ["file"], "properties": {"file": {"type": "string", "format": "binary"}}}}}}, "responses": {"200": {"description": "Updated course", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Course"}}}}, "400": {"$ref": "#/components/responses/Error"}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Error"}, "404": {"$ref": "#/components/responses/Error"}, "413": {"$ref": "#/components/responses/Error"}, "415": {"$ref": "#/components/responses/Error"}, "503": {"$ref": "#/components/responses/Error"}}}
+    },
+    "/api/v1/files/{storage_key}": {
+      "parameters": [{"name": "storage_key", "in": "path", "required": true, "schema": {"type": "string", "pattern": "^[0-9a-f]{32}\\.(png|jpg|webp)$"}}],
+      "get": {"operationId": "getUploadedFile", "security": [], "description": "Serves uploaded course thumbnail bytes with nosniff header and path traversal protection.", "responses": {"200": {"description": "Image bytes", "content": {"image/png": {"schema": {"type": "string", "format": "binary"}}, "image/jpeg": {"schema": {"type": "string", "format": "binary"}}, "image/webp": {"schema": {"type": "string", "format": "binary"}}}}, "404": {"$ref": "#/components/responses/Error"}}}
     }
   },
   "components": {

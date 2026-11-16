@@ -9,6 +9,7 @@ dependencies = [
     "pydantic-settings>=2.6,<3.0",
     "pyjwt>=2.15.1",
     "pymysql[rsa]>=1.1,<2",
+    "python-multipart>=0.0.34",
     "sqlalchemy>=2.0,<3",
     "uvicorn>=0.32,<1.0",
 ]

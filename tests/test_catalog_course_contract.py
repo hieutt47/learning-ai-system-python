@@ -40,10 +40,13 @@ def test_canonical_spec_covers_all_implemented_business_operations(contract):
         if method in {"get", "post", "put", "patch", "delete"}
     }
     assert expected == actual
-    assert len(expected) == 21
+    assert len(expected) == 23
     for path, method in expected:
         operation = contract["paths"][path][method.lower()]
-        if (path, method) == ("/api/v1/categories", "GET"):
+        if (path, method) in {
+            ("/api/v1/categories", "GET"),
+            ("/api/v1/files/{storage_key}", "GET"),
+        }:
             assert operation["security"] == []
         elif not path.startswith("/api/v1/auth/"):
             assert operation["security"] == [{"bearerAuth": []}]

@@ -106,8 +106,9 @@ def test_unexpected_error_is_safe(client):
 def test_validation_uses_400_without_echoing_input(client, payload):
     response = client.post("/_test/validate", json=payload)
     body = assert_envelope(response, 400, "VALIDATION_ERROR")
-    assert body["details"][0]["field"] == "body.quantity"
-    assert set(body["details"][0]) == {"field", "type"}
+    assert body["details"][0]["field"] == "quantity"
+    assert set(body["details"][0]) == {"field", "message"}
+    assert body["details"][0]["message"] == "Invalid value"
     assert "secret-input" not in response.text
 
 

@@ -8,6 +8,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
+from app.core.api_errors import ApiError
+
 logger = logging.getLogger(__name__)
 
 HTTP_ERROR_CODES = {
@@ -44,6 +46,10 @@ def error_response(
 
 
 def register_error_handlers(app: FastAPI) -> None:
+    @app.exception_handler(ApiError)
+    async def handle_application_error(request: Request, exc: ApiError) -> JSONResponse:
+        return error_response(request, exc.status, exc.code, str(exc), exc.details, exc.headers)
+
     @app.exception_handler(HTTPException)
     async def handle_http_error(request: Request, exc: HTTPException) -> JSONResponse:
         return error_response(
@@ -60,7 +66,7 @@ def register_error_handlers(app: FastAPI) -> None:
     ) -> JSONResponse:
         # Do not echo raw input or Pydantic context (which can contain secrets/errors).
         details = [
-            {"field": ".".join(map(str, error["loc"])), "type": error["type"]}
+            {"field": ".".join(map(str, error["loc"][1:])), "message": "Invalid value"}
             for error in exc.errors()
         ]
         return error_response(

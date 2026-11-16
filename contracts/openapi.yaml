@@ -1,0 +1,51 @@
+{
+  "openapi": "3.1.0",
+  "info": {"title": "Learning AI Python API", "version": "0.1.0", "description": "Partial canonical contract: TASK004 minimal identity only. JSON syntax is valid YAML 1.2. IDs and prices are strings; UTC timestamps end in Z. Other product operations are not implemented. Refresh/logout omit Authorization; valid unexpired inactive-user Bearer blocks them with 403 before mutation. Validation errors are 400. Access JWT remains usable until exp after logout while user active."},
+  "paths": {
+    "/api/v1/auth/login": {"post": {
+      "operationId": "login", "security": [],
+      "description": "Trim/lowercase email; preserve password; nonblank password at most 72 UTF-8 bytes. Active and email-verified user required.",
+      "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Login"}}}},
+      "responses": {
+        "200": {"$ref": "#/components/responses/Tokens"},
+        "400": {"$ref": "#/components/responses/Error"}, "401": {"$ref": "#/components/responses/Unauthorized"},
+        "403": {"$ref": "#/components/responses/Error"}, "503": {"$ref": "#/components/responses/Error"}
+      }
+    }},
+    "/api/v1/auth/refresh": {"post": {
+      "operationId": "refresh", "security": [{"refreshCookie": []}],
+      "description": "No request body or Authorization. Lock session, reject revoked/expired, require active verified user, rotate hash in same row; sliding seven-day lifetime.",
+      "responses": {"200": {"$ref": "#/components/responses/Tokens"}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Error"}, "503": {"$ref": "#/components/responses/Error"}}
+    }},
+    "/api/v1/auth/logout": {"post": {
+      "operationId": "logout", "security": [{"refreshCookie": []}, {}],
+      "description": "No body or Authorization. Missing/unknown/revoked cookie is successful. Revoke matching session, clear cookie, preserve issued access JWT.",
+      "responses": {
+        "204": {"description": "No body. Refresh cookie cleared with matching name/path, HttpOnly, SameSite=Lax, Max-Age=0.", "headers": {"Set-Cookie": {"schema": {"type": "string"}}, "X-Request-ID": {"schema": {"type": "string"}}}},
+        "403": {"$ref": "#/components/responses/Error"}, "503": {"$ref": "#/components/responses/Error"}
+      }
+    }},
+    "/api/v1/users/me": {"get": {
+      "operationId": "currentUser", "security": [{"bearerAuth": []}],
+      "description": "Valid HS256 access JWT with exp/iat/sub; reload user role/active status from database. Never expose password/hash/session data.",
+      "responses": {
+        "200": {"description": "Current active user", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/User"}}}},
+        "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Error"}, "503": {"$ref": "#/components/responses/Error"}
+      }
+    }}
+  },
+  "components": {
+    "securitySchemes": {"bearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}, "refreshCookie": {"type": "apiKey", "in": "cookie", "name": "refreshToken"}},
+    "schemas": {
+      "Login": {"type": "object", "additionalProperties": false, "required": ["email", "password"], "properties": {"email": {"type": "string", "minLength": 1, "maxLength": 254}, "password": {"type": "string", "minLength": 1, "maxLength": 72, "description": "Also limited to 72 UTF-8 bytes; no trimming, normalization or registration minimum."}}},
+      "AuthResponse": {"type": "object", "additionalProperties": false, "required": ["access_token"], "properties": {"access_token": {"type": "string", "minLength": 1}}},
+      "User": {"type": "object", "additionalProperties": false, "required": ["id", "full_name", "email", "role", "is_active", "created_at"], "properties": {"id": {"type": "string", "pattern": "^[1-9][0-9]*$"}, "full_name": {"type": "string"}, "email": {"type": "string"}, "role": {"type": "string", "enum": ["STUDENT", "TEACHER", "ADMIN"]}, "is_active": {"type": "boolean"}, "created_at": {"type": "string", "format": "date-time", "pattern": "Z$"}}},
+      "Error": {"type": "object", "additionalProperties": false, "required": ["code", "message", "details", "request_id"], "properties": {"code": {"type": "string", "description": "VALIDATION_ERROR, UNAUTHENTICATED, ACCOUNT_INACTIVE, EMAIL_NOT_VERIFIED, CONFIGURATION_ERROR, SERVICE_UNAVAILABLE or safe generic error."}, "message": {"type": "string"}, "details": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["field", "message"], "properties": {"field": {"type": "string"}, "message": {"type": "string"}}}}, "request_id": {"type": "string", "minLength": 1}}}
+    },
+    "responses": {
+      "Tokens": {"description": "Access JWT (15 minutes). Set-Cookie refreshToken: HttpOnly; Path=/api/v1/auth; SameSite=Lax; Max-Age=604800; Secure over HTTPS. No refresh token in JSON.", "headers": {"Set-Cookie": {"schema": {"type": "string"}}, "X-Request-ID": {"schema": {"type": "string"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AuthResponse"}}}},
+      "Error": {"description": "Safe error envelope; details always an array. Configuration/storage unavailable ->503; invalid payload ->400; inactive/unverified ->403.", "headers": {"X-Request-ID": {"schema": {"type": "string"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+      "Unauthorized": {"description": "Missing/invalid credentials, JWT or refresh session.", "headers": {"WWW-Authenticate": {"schema": {"type": "string", "const": "Bearer"}}, "X-Request-ID": {"schema": {"type": "string"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+    }
+  }
+}

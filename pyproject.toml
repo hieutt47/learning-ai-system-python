@@ -4,8 +4,10 @@ version = "0.1.0"
 description = "FastAPI modular monolith skeleton"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "bcrypt>=5.0.0",
     "fastapi>=0.115,<1.0",
     "pydantic-settings>=2.6,<3.0",
+    "pyjwt>=2.15.1",
     "pymysql[rsa]>=1.1,<2",
     "sqlalchemy>=2.0,<3",
     "uvicorn>=0.32,<1.0",
@@ -14,6 +16,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "httpx>=0.28,<1.0",
+    "openapi-spec-validator>=0.9.0",
     "pytest>=8.3,<10.0",
     "ruff>=0.9,<1.0",
 ]

@@ -26,15 +26,16 @@ Debug tracebacks are disabled. The example contains no credentials.
 ## Routes and errors
 
 - `GET /health` returns `{"status":"ok"}`; this is liveness only, not dependency readiness.
-- `/docs`, `/redoc`, and `/openapi.json` are FastAPI's generated documentation for this
-  skeleton, not an approved shared business API contract.
+- `/docs`, `/redoc`, and `/openapi.json` are disabled to avoid a parallel framework contract.
+  The partial canonical API definition is [contracts/openapi.yaml](contracts/openapi.yaml).
 - Responses have a generated UUID `X-Request-ID`. Caller-supplied IDs are ignored.
 - Errors use `{code, message, details, request_id}`. Request validation returns HTTP 400,
-  not FastAPI's default 422. Validation details identify fields/types without echoing inputs;
+  not FastAPI's default 422. Validation details identify fields/messages without echoing inputs;
   unexpected failures return a generic HTTP 500 message.
 
-The default local URL is `http://127.0.0.1:8000`. CORS is not configured; frontend origins
-and integration remain future work. Do not expose the development server as production.
+The default local URL is `http://127.0.0.1:8000`. Credentialed CORS is disabled unless exact
+origins are configured; see [minimal identity setup](docs/identity.md). Do not expose the
+development server as production.
 
 ## Checks
 

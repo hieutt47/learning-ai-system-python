@@ -2,8 +2,10 @@
 
 TASK002 provides a lean FastAPI modular-monolith skeleton, not a completed learning platform.
 TASK003 adds explicit MySQL connection/session infrastructure and official Flyway delegation.
-Liveness does not connect to a database. Business modules and external-service integration
-are separate tasks.
+TASK004 adds minimal identity; TASK005 adds public categories, admin category writes and
+owner/admin draft course CRUD. See [catalog/course scope and checks](docs/catalog-course.md).
+Liveness does not connect to a database. Other business modules and external integrations
+remain separate tasks.
 
 ## Local setup
 

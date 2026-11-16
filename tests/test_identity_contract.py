@@ -16,6 +16,8 @@ def test_partial_canonical_contract_matches_identity_routes_and_shapes():
         (path, method.upper())
         for path, operations in contract["paths"].items()
         for method in operations
+        if method in {"get", "post", "patch", "delete"}
+        and (path.startswith("/api/v1/auth/") or path == "/api/v1/users/me")
     }
     actual = {
         (route.path, method)

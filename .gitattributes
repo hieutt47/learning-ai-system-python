@@ -1,0 +1,2 @@
+# Preserve canonical applied migration bytes, including original line endings.
+database/migrations/*.sql -text

@@ -118,3 +118,23 @@ leaves fixtures/schema for inspection; use a newly provisioned target on each ru
 with existing data, generated-column/CHECK enforcement, failure recovery, and Java/Python
 history parity need additional real-MySQL acceptance. No authorized database or official CLI
 was available during TASK003 implementation; integration skips are not migration success.
+
+## Frontend SPA (`frontend/`)
+
+The shared React/TypeScript/Vite SPA is imported from Java baseline `51a88ce6107e29ad9a7dd1b0a96ebe25a62d8c44`
+with `VITE_API_BASE_URL=/api/v1` and Vite dev proxy defaulting to `http://localhost:8000`
+(`loadEnv` enabled for `.env.local` `VITE_DEV_BACKEND`).
+
+Run checks from `frontend/`:
+
+```sh
+npm ci
+npm run typecheck
+npm run test
+npm run lint
+npm run build
+```
+
+**UI screens vs Python backend coverage (at import):**
+- **Backed by Python:** Login/refresh/logout & current user (`/login`, `/users/me`), Admin categories (`/admin/categories`), Teacher draft course CRUD (`/teaching/courses`, `/teaching/courses/:id`), Lesson CRUD/read (`/teaching/courses/:id/lessons`, `/teaching/lessons/:id`, `/learn/.../lessons/:id` without documents).
+- **UI present, Python endpoints NOT yet implemented:** Registration/email verification/password reset/profile/users/teacher-requests, marketplace & course publication/archive/thumbnail, enrollment, lesson document upload/reordering, quizzes/attempts/statistics, and AI/flashcard flows.

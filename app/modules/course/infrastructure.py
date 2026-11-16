@@ -1,5 +1,7 @@
 """Course SQL adapter and narrow category lookup; no cross-module repository access."""
 
+from __future__ import annotations
+
 from decimal import Decimal
 
 from sqlalchemy import text
@@ -118,6 +120,114 @@ class SqlCourseRepository:
             {"key": storage_key, "url": thumbnail_url, "id": course_id},
         )
         return self.get(course_id)
+
+    def set_published(self, course_id: int, is_published: bool) -> Course:
+        self.session.execute(
+            text("UPDATE courses SET is_published = :pub WHERE id = :id"),
+            {"pub": is_published, "id": course_id},
+        )
+        return self.get(course_id)
+
+    def archive(self, course_id: int) -> Course:
+        self.session.execute(
+            text(
+                "UPDATE courses SET archived_at = UTC_TIMESTAMP(6), is_published = FALSE "
+                "WHERE id = :id"
+            ),
+            {"id": course_id},
+        )
+        return self.get(course_id)
+
+    def search_public(
+        self,
+        *,
+        q: str | None,
+        category_id: int | None,
+        sort: str,
+        page: int,
+        page_size: int,
+    ) -> tuple[list[dict], int]:
+        clauses = ["c.is_published = TRUE", "c.archived_at IS NULL"]
+        params: dict = {"limit": page_size, "offset": (page - 1) * page_size}
+        if category_id is not None:
+            clauses.append("c.category_id = :category_id")
+            params["category_id"] = category_id
+        if q is not None:
+            escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            clauses.append("LOWER(c.title) LIKE LOWER(:pattern) ESCAPE '\\\\'")
+            params["pattern"] = f"%{escaped}%"
+        where = " WHERE " + " AND ".join(clauses)
+        order_map = {
+            "created_at,desc": "c.created_at DESC, c.id DESC",
+            "created_at,asc": "c.created_at ASC, c.id ASC",
+            "title,asc": "c.title ASC, c.id DESC",
+            "title,desc": "c.title DESC, c.id DESC",
+        }
+        order_by = order_map[sort]
+        rows = self.session.execute(
+            text(COURSE_SELECT + where + f" ORDER BY {order_by} LIMIT :limit OFFSET :offset"),
+            params,
+        ).mappings()
+        items = [
+            {
+                "id": str(r["id"]),
+                "title": r["title"],
+                "description": r["description"],
+                "category": {"id": str(r["category_id"]), "name": r["category_name"]},
+                "teacher": {"id": str(r["teacher_id"]), "full_name": r["teacher_name"]},
+                "thumbnail_url": r["thumbnail_url"],
+                "price": format(r["price"], ".2f"),
+                "currency": "VND",
+                "total_students": r["total_students"],
+                "lesson_count": r["lesson_count"],
+                "outline": None,
+            }
+            for r in rows
+        ]
+        total = self.session.execute(
+            text("SELECT COUNT(*) FROM courses c" + where),
+            params,
+        ).scalar_one()
+        return items, total
+
+    def get_public(self, course_id: int) -> dict | None:
+        row = (
+            self.session.execute(
+                text(
+                    COURSE_SELECT
+                    + " WHERE c.id = :id AND c.is_published = TRUE AND c.archived_at IS NULL"
+                ),
+                {"id": course_id},
+            )
+            .mappings()
+            .first()
+        )
+        if row is None:
+            return None
+        outline_rows = self.session.execute(
+            text(
+                "SELECT id, title, order_index FROM lessons "
+                "WHERE course_id = :course_id ORDER BY order_index ASC, id ASC"
+            ),
+            {"course_id": course_id},
+        ).mappings()
+        outline = [
+            {"id": str(l_row["id"]), "title": l_row["title"], "order_index": l_row["order_index"]}
+            for l_row in outline_rows
+        ]
+        return {
+            "id": str(row["id"]),
+            "title": row["title"],
+            "description": row["description"],
+            "category": {"id": str(row["category_id"]), "name": row["category_name"]},
+            "teacher": {"id": str(row["teacher_id"]), "full_name": row["teacher_name"]},
+            "thumbnail_url": row["thumbnail_url"],
+            "price": format(row["price"], ".2f"),
+            "currency": "VND",
+            "total_students": row["total_students"],
+            "lesson_count": len(outline),
+            "outline": outline,
+        }
 
     def dependencies(self, course_id: int) -> tuple[str, ...]:
         # All direct course foreign keys in V1-V9; descendants are protected by lessons.

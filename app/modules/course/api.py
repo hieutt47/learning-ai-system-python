@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.api_errors import ApiError
 from app.core.catalog_course_dependencies import SessionDependency, SqlUnitOfWork, WireId, invoke
-from app.modules.course.domain import CourseService
+from app.modules.course.domain import CourseService, MarketplaceService
 from app.modules.course.infrastructure import SqlCourseCategoryLookup, SqlCourseRepository
 from app.modules.course.storage import MAX_THUMBNAIL_BYTES, LocalThumbnailStorage, detect_image_type
 from app.modules.identity.api.dependencies import current_actor
@@ -28,7 +28,12 @@ def get_course_service(session: SessionDependency) -> CourseService:
     )
 
 
+def get_marketplace_service(session: SessionDependency) -> MarketplaceService:
+    return MarketplaceService(SqlCourseRepository(session), SqlCourseCategoryLookup(session))
+
+
 Service = Annotated[CourseService, Depends(get_course_service)]
+MarketplaceSvc = Annotated[MarketplaceService, Depends(get_marketplace_service)]
 CurrentActor = Annotated[Actor, Depends(current_actor)]
 
 
@@ -68,6 +73,53 @@ class CourseResponse(BaseModel):
 
 class CoursePage(BaseModel):
     items: list[CourseResponse]
+    page: int
+    page_size: int
+    total: int
+
+
+class CoursePublicationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    is_published: bool
+
+
+class CourseArchiveRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    archived: bool
+
+
+class PublicCategorySummary(BaseModel):
+    id: str
+    name: str
+
+
+class PublicTeacherSummary(BaseModel):
+    id: str
+    full_name: str
+
+
+class OutlineItemResponse(BaseModel):
+    id: str
+    title: str
+    order_index: int
+
+
+class CoursePublicResponse(BaseModel):
+    id: str
+    title: str
+    description: str
+    category: PublicCategorySummary
+    teacher: PublicTeacherSummary
+    thumbnail_url: str | None
+    price: str
+    currency: str
+    total_students: int
+    lesson_count: int
+    outline: list[OutlineItemResponse] | None = None
+
+
+class CoursePublicPage(BaseModel):
+    items: list[CoursePublicResponse]
     page: int
     page_size: int
     total: int
@@ -178,3 +230,43 @@ def get_file(storage_key: str, storage: ThumbnailStorage):
             "Cache-Control": "public, max-age=2592000",
         },
     )
+
+
+@router.patch("/courses/{course_id}/publication", response_model=CourseResponse)
+def set_publication(
+    course_id: WireId, body: CoursePublicationRequest, actor: CurrentActor, service: Service
+):
+    return course_response(invoke(service.set_published, actor, int(course_id), body.is_published))
+
+
+@router.patch("/courses/{course_id}/archive", response_model=CourseResponse)
+def archive_course(
+    course_id: WireId, body: CourseArchiveRequest, actor: CurrentActor, service: Service
+):
+    if body.archived is not True:
+        raise ApiError(400, "VALIDATION_ERROR", "Only archived=true is supported.")
+    return course_response(invoke(service.archive, actor, int(course_id)))
+
+
+@router.get("/courses", response_model=CoursePublicPage)
+def search_marketplace(
+    service: MarketplaceSvc,
+    q: str | None = None,
+    category_id: WireId | None = None,
+    sort: str | None = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+):
+    cat = int(category_id) if category_id is not None else None
+    result = invoke(service.search, q=q, category_id=cat, sort=sort, page=page, page_size=page_size)
+    return CoursePublicPage(
+        items=[CoursePublicResponse(**item) for item in result.items],
+        page=result.page,
+        page_size=result.page_size,
+        total=result.total,
+    )
+
+
+@router.get("/courses/{course_id}", response_model=CoursePublicResponse)
+def get_public_course(course_id: WireId, service: MarketplaceSvc):
+    return CoursePublicResponse(**invoke(service.get_public, int(course_id)))

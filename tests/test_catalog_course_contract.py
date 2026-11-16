@@ -27,7 +27,7 @@ def test_canonical_spec_covers_all_implemented_business_operations(contract):
         (path, method.upper())
         for path, operations in contract["paths"].items()
         for method in operations
-        if method in {"get", "post", "patch", "delete"}
+        if method in {"get", "post", "put", "patch", "delete"}
     }
     # FastAPI includes routers lazily; inspect its resolved runtime path inventory.
     # This generated schema is used only for route coverage, not as a second contract.
@@ -37,10 +37,10 @@ def test_canonical_spec_covers_all_implemented_business_operations(contract):
         for path, operations in runtime_paths.items()
         if path.startswith("/api/v1/")
         for method in operations
-        if method in {"get", "post", "patch", "delete"}
+        if method in {"get", "post", "put", "patch", "delete"}
     }
     assert expected == actual
-    assert len(expected) == 13
+    assert len(expected) == 18
     for path, method in expected:
         operation = contract["paths"][path][method.lower()]
         if (path, method) == ("/api/v1/categories", "GET"):

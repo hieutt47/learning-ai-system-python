@@ -14,6 +14,7 @@ from app.modules.catalog.api import router as catalog_router
 from app.modules.course.api import router as course_router
 from app.modules.identity.api.router import router as identity_router
 from app.modules.identity.infrastructure.settings import AuthSettings
+from app.modules.lesson.api import router as lesson_router
 
 
 def create_app(
@@ -53,7 +54,7 @@ def create_app(
             CORSMiddleware,
             allow_origins=auth_settings.cors_origins,
             allow_credentials=True,
-            allow_methods=["GET", "POST", "PATCH", "DELETE"],
+            allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
             allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
             expose_headers=["X-Request-ID"],
         )
@@ -62,6 +63,7 @@ def create_app(
     application.include_router(identity_router)
     application.include_router(catalog_router)
     application.include_router(course_router)
+    application.include_router(lesson_router)
 
     @application.get("/health")
     async def health() -> dict[str, str]:

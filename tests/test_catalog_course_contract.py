@@ -40,7 +40,7 @@ def test_canonical_spec_covers_all_implemented_business_operations(contract):
         if method in {"get", "post", "put", "patch", "delete"}
     }
     assert expected == actual
-    assert len(expected) == 27
+    assert len(expected) == 37
     for path, method in expected:
         operation = contract["paths"][path][method.lower()]
         if (path, method) in {

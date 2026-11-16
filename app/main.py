@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from app.core.config import Settings
 from app.core.errors import register_error_handlers
 from app.core.request_id import RequestIdMiddleware
+from app.modules.assessment.api import router as assessment_router
 from app.modules.catalog.api import router as catalog_router
 from app.modules.course.api import router as course_router
 from app.modules.enrollment.api import router as enrollment_router
@@ -66,6 +67,7 @@ def create_app(
     application.include_router(course_router)
     application.include_router(enrollment_router)
     application.include_router(lesson_router)
+    application.include_router(assessment_router)
 
     @application.get("/health")
     async def health() -> dict[str, str]:

@@ -42,6 +42,7 @@ class Course:
     lesson_count: int | None = None
     total_students: int | None = None
     thumbnail_storage_key: str | None = None
+    usable_lesson_count: int | None = None
 
 
 class CourseCategoryPort(Protocol):
@@ -243,11 +244,17 @@ class CourseService:
                         409,
                         "Only free courses can be published in this version.",
                     )
-                if (course.lesson_count or 0) < 1:
+                usable_lessons = (
+                    course.usable_lesson_count
+                    if course.usable_lesson_count is not None
+                    else (course.lesson_count or 0)
+                )
+                if usable_lessons < 1:
                     raise DomainError(
                         "INVALID_STATE",
                         409,
-                        "Course cannot be published: at least one lesson is required.",
+                        "Course cannot be published: at least one usable lesson "
+                        "(with video or document) is required.",
                     )
             elif not course.is_published:
                 return course

@@ -96,6 +96,24 @@ class FakeCourseRepo:
                 teacher_name="Teacher",
                 lesson_count=0,
                 total_students=0,
+                usable_lesson_count=0,
+            ),
+            5: Course(
+                id=5,
+                title="Title-Only Lesson",
+                description="Desc",
+                category_id=1,
+                teacher_id=10,
+                price=Decimal("0.00"),
+                thumbnail_url="/api/v1/files/abc.png",
+                thumbnail_storage_key="abc.png",
+                created_at=NOW,
+                updated_at=NOW,
+                category_name="Cat",
+                teacher_name="Teacher",
+                lesson_count=1,
+                total_students=0,
+                usable_lesson_count=0,
             ),
         }
 
@@ -192,6 +210,10 @@ def test_publication_conditions_and_archive_invariants():
     with pytest.raises(DomainError) as exc_lesson:
         svc.set_published(teacher, 4, True)
     assert exc_lesson.value.code == "INVALID_STATE"
+
+    with pytest.raises(DomainError) as exc_unusable:
+        svc.set_published(teacher, 5, True)
+    assert exc_unusable.value.code == "INVALID_STATE"
 
     published = svc.set_published(teacher, 1, True)
     assert published.is_published is True

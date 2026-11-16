@@ -87,7 +87,27 @@ def test_mysql_milestone_publish_marketplace_enroll_read_and_archive(
     thumb_url = thumb_res.json()["thumbnail_url"]
     assert client.get(thumb_url).status_code == 200
 
-    # Teacher adds lesson with private transcript
+    # Title-only (and transcript-only) lesson is NOT usable for students -> publish must fail 409
+    unusable_lesson = client.post(
+        f"/api/v1/courses/{course_id}/lessons",
+        headers={"Authorization": f"Bearer {teacher_tok}"},
+        json={
+            "title": "Draft title-only lesson",
+            "video_url": "",
+            "transcript_text": "Private transcript only",
+        },
+    )
+    assert unusable_lesson.status_code == 201
+    assert (
+        client.patch(
+            f"/api/v1/courses/{course_id}/publication",
+            headers={"Authorization": f"Bearer {teacher_tok}"},
+            json={"is_published": True},
+        ).status_code
+        == 409
+    )
+
+    # Teacher adds usable lesson with video + private transcript
     lesson_res = client.post(
         f"/api/v1/courses/{course_id}/lessons",
         headers={"Authorization": f"Bearer {teacher_tok}"},
@@ -116,7 +136,8 @@ def test_mysql_milestone_publish_marketplace_enroll_read_and_archive(
     public_detail = client.get(f"/api/v1/courses/{course_id}")
     assert public_detail.status_code == 200
     assert public_detail.json()["outline"] == [
-        {"id": lesson_id, "title": "Lesson 1", "order_index": 1}
+        {"id": unusable_lesson.json()["id"], "title": "Draft title-only lesson", "order_index": 1},
+        {"id": lesson_id, "title": "Lesson 1", "order_index": 2},
     ]
     assert "video_url" not in public_detail.json()["outline"][0]
     assert "transcript_text" not in public_detail.json()["outline"][0]

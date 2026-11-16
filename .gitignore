@@ -17,6 +17,10 @@ dist/
 node_modules/
 .local/
 
+# Runtime upload/storage directories
+uploads/
+data/
+
 # Tool caches and reports
 .pytest_cache/
 .ruff_cache/

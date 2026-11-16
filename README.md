@@ -137,4 +137,8 @@ npm run build
 
 **UI screens vs Python backend coverage (at import):**
 - **Backed by Python:** Login/refresh/logout & current user (`/login`, `/users/me`), Admin categories (`/admin/categories`), Teacher draft course CRUD (`/teaching/courses`, `/teaching/courses/:id`), Lesson CRUD/read (`/teaching/courses/:id/lessons`, `/teaching/lessons/:id`, `/learn/.../lessons/:id` without documents).
-- **UI present, Python endpoints NOT yet implemented:** Registration/email verification/password reset/profile/users/teacher-requests, marketplace & course publication/archive/thumbnail, enrollment, lesson document upload/reordering, quizzes/attempts/statistics, and AI/flashcard flows.
+- **UI present, Python endpoints NOT yet implemented:** Registration/email verification/password reset/profile/users/teacher-requests, lesson document upload/reordering, quizzes/attempts/statistics, and AI/flashcard flows.
+
+**Known limitations (storage & publication):**
+- Course thumbnail upload (`./uploads`, gitignored) performs synchronous exception-based rollback cleanup if the DB update fails, and deletes the previous thumbnail after DB commit; **process-crash recovery / durable background cleanup is NOT implemented or proven** for thumbnails.
+- Publishing a course requires at least one **usable** lesson (`video_url` non-empty or at least one document). A lesson with only `title` (or `title` + private `transcript_text`, which is hidden from students) does not satisfy publication.

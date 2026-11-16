@@ -128,6 +128,7 @@ class CoursePublicPage(BaseModel):
 def course_response(course) -> CourseResponse:
     values = asdict(course)
     values.pop("thumbnail_storage_key", None)
+    values.pop("usable_lesson_count", None)
     for field in ("id", "category_id", "teacher_id"):
         values[field] = str(values[field])
     values["price"] = format(course.price, ".2f")

@@ -16,6 +16,11 @@ SELECT c.id, c.title, c.description, c.category_id, c.teacher_id, c.price,
        c.created_at, c.updated_at,
        cat.name AS category_name, u.full_name AS teacher_name,
        (SELECT COUNT(*) FROM lessons l WHERE l.course_id = c.id) AS lesson_count,
+       (SELECT COUNT(*) FROM lessons l
+        WHERE l.course_id = c.id
+          AND (TRIM(l.video_url) <> ''
+               OR EXISTS (SELECT 1 FROM lesson_documents ld WHERE ld.lesson_id = l.id)))
+           AS usable_lesson_count,
        (SELECT COUNT(*) FROM course_members m WHERE m.course_id = c.id) AS total_students
 FROM courses c JOIN categories cat ON cat.id = c.category_id
 JOIN users u ON u.id = c.teacher_id

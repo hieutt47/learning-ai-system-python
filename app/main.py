@@ -16,6 +16,7 @@ from app.modules.course.api import router as course_router
 from app.modules.enrollment.api import router as enrollment_router
 from app.modules.identity.api.router import router as identity_router
 from app.modules.identity.infrastructure.settings import AuthSettings
+from app.modules.learning.api import router as learning_router
 from app.modules.lesson.api import router as lesson_router
 
 
@@ -68,6 +69,7 @@ def create_app(
     application.include_router(enrollment_router)
     application.include_router(lesson_router)
     application.include_router(assessment_router)
+    application.include_router(learning_router)
 
     @application.get("/health")
     async def health() -> dict[str, str]:
